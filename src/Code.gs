@@ -395,6 +395,86 @@ function testClassification() {
 }
 
 // ============================================================
+// EMAIL ANALYSIS (run once to discover patterns for rules)
+// ============================================================
+
+/**
+ * Analyze your recent emails to discover sender patterns.
+ * Run this from the editor — it only READS emails, never modifies anything.
+ * Share the output so we can build custom rules.
+ */
+function analyzeMyEmails() {
+  var domains = {};
+  var senders = {};
+  var subjectWords = {};
+  
+  // Scan last 200 threads (mix of read + unread)
+  var threads = GmailApp.search('', 0, 200);
+  var totalEmails = 0;
+  
+  for (var t = 0; t < threads.length; t++) {
+    var messages = threads[t].getMessages();
+    for (var m = 0; m < messages.length; m++) {
+      var msg = messages[m];
+      var from = msg.getFrom();
+      var subject = msg.getSubject() || '';
+      
+      // Extract email address
+      var emailMatch = from.match(/<([^>]+)>/);
+      var email = emailMatch ? emailMatch[1] : from;
+      email = email.toLowerCase();
+      
+      // Extract domain
+      var domainMatch = email.match(/@(.+)$/);
+      var domain = domainMatch ? domainMatch[1] : 'unknown';
+      
+      // Count
+      domains[domain] = (domains[domain] || 0) + 1;
+      senders[email] = (senders[email] || 0) + 1;
+      
+      // Track subject keywords (top words)
+      var words = subject.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
+      var stopWords = ['the','a','an','is','are','was','were','for','and','or','to','in','of','your','you','has','have','been','this','that','with','from','on','at','by','re','fwd'];
+      for (var w = 0; w < words.length; w++) {
+        if (words[w].length > 3 && stopWords.indexOf(words[w]) === -1) {
+          subjectWords[words[w]] = (subjectWords[words[w]] || 0) + 1;
+        }
+      }
+      
+      totalEmails++;
+    }
+  }
+  
+  // Sort by frequency
+  var topDomains = Object.keys(domains).sort(function(a,b) { return domains[b] - domains[a]; }).slice(0, 30);
+  var topSenders = Object.keys(senders).sort(function(a,b) { return senders[b] - senders[a]; }).slice(0, 30);
+  var topWords = Object.keys(subjectWords).sort(function(a,b) { return subjectWords[b] - subjectWords[a]; }).slice(0, 25);
+  
+  Logger.log('========================================');
+  Logger.log('EMAIL ANALYSIS — ' + totalEmails + ' emails scanned');
+  Logger.log('========================================');
+  
+  Logger.log('\n📧 TOP SENDER DOMAINS:');
+  for (var i = 0; i < topDomains.length; i++) {
+    Logger.log('  ' + (i+1) + '. ' + topDomains[i] + ' (' + domains[topDomains[i]] + ' emails)');
+  }
+  
+  Logger.log('\n👤 TOP SENDERS:');
+  for (var j = 0; j < topSenders.length; j++) {
+    Logger.log('  ' + (j+1) + '. ' + topSenders[j] + ' (' + senders[topSenders[j]] + ' emails)');
+  }
+  
+  Logger.log('\n🔤 COMMON SUBJECT WORDS:');
+  for (var k = 0; k < topWords.length; k++) {
+    Logger.log('  ' + (k+1) + '. "' + topWords[k] + '" (' + subjectWords[topWords[k]] + ' times)');
+  }
+  
+  Logger.log('\n========================================');
+  Logger.log('Share this output to build custom rules!');
+  Logger.log('========================================');
+}
+
+// ============================================================
 // PERFORMANCE MANAGER
 // ============================================================
 
