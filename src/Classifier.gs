@@ -45,7 +45,7 @@ var DEFAULT_RULES = [
     type: 'keyword',
     patterns: [{
       location: 'subject',
-      keywords: ['order confirmed', 'order shipped', 'order delivered', 'your order', 'shipment', 'tracking number', 'out for delivery'],
+      keywords: ['order confirmed', 'order shipped', 'order delivered', 'your order', 'shipment', 'tracking number', 'out for delivery', 'shipped', 'delivered', 'dispatched'],
       match: 'any'
     }],
     label: 'Shopping',
