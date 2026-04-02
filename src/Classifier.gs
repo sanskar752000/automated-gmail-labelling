@@ -15,7 +15,244 @@
 // ============================================================
 
 var DEFAULT_RULES = [
-  // Shopping
+  // ============================================================
+  // JOBS & CAREER
+  // ============================================================
+  {
+    id: 'linkedin-jobs',
+    type: 'sender',
+    patterns: [
+      { domain: 'jobalerts-noreply@linkedin.com', exact: true },
+      { domain: 'messages-noreply@linkedin.com', exact: true }
+    ],
+    label: 'Jobs',
+    confidence: 0.95,
+    priority: 130,
+    enabled: true
+  },
+  {
+    id: 'linkedin-domain',
+    type: 'sender',
+    patterns: [{ domain: 'linkedin.com' }],
+    label: 'Jobs',
+    confidence: 0.85,
+    priority: 100,
+    enabled: true
+  },
+  {
+    id: 'naukri-domain',
+    type: 'sender',
+    patterns: [{ domain: 'naukri.com' }],
+    label: 'Jobs',
+    confidence: 0.90,
+    priority: 110,
+    enabled: true
+  },
+  {
+    id: 'techgig-domain',
+    type: 'sender',
+    patterns: [{ domain: 'techgig.com' }],
+    label: 'Jobs',
+    confidence: 0.85,
+    priority: 100,
+    enabled: true
+  },
+  {
+    id: 'job-keywords',
+    type: 'keyword',
+    patterns: [{
+      location: 'subject',
+      keywords: ['job opening', 'job alert', 'hiring', 'apply now', 'job opportunity', 'vacancy', 'career'],
+      match: 'any'
+    }],
+    label: 'Jobs',
+    confidence: 0.75,
+    priority: 80,
+    enabled: true
+  },
+
+  // ============================================================
+  // FINANCE — BANKING (transactions, credit cards, alerts)
+  // ============================================================
+  {
+    id: 'indusind-bank',
+    type: 'sender',
+    patterns: [
+      { domain: 'indusind.com' },
+      { domain: 'mail.indusind.bank.in' }
+    ],
+    label: 'Finance/Banking',
+    confidence: 0.95,
+    priority: 130,
+    enabled: true
+  },
+  {
+    id: 'bob-card',
+    type: 'sender',
+    patterns: [{ domain: 'bobcard.in' }],
+    label: 'Finance/Banking',
+    confidence: 0.95,
+    priority: 130,
+    enabled: true
+  },
+  {
+    id: 'cred-payments',
+    type: 'sender',
+    patterns: [{ domain: 'cred.club' }],
+    label: 'Finance/Banking',
+    confidence: 0.90,
+    priority: 120,
+    enabled: true
+  },
+  {
+    id: 'fibe-finance',
+    type: 'sender',
+    patterns: [{ domain: 'info.fibe.in' }],
+    label: 'Finance/Banking',
+    confidence: 0.85,
+    priority: 100,
+    enabled: true
+  },
+  {
+    id: 'bank-domains',
+    type: 'sender',
+    patterns: [
+      { domain: 'hdfcbank.net' },
+      { domain: 'icicibank.com' },
+      { domain: 'sbi.co.in' },
+      { domain: 'axisbank.com' },
+      { domain: 'kotak.com' },
+      { domain: 'paypal.com' },
+      { domain: 'razorpay.com' }
+    ],
+    label: 'Finance/Banking',
+    confidence: 0.90,
+    priority: 120,
+    enabled: true
+  },
+  {
+    id: 'banking-keywords',
+    type: 'keyword',
+    patterns: [{
+      location: 'subject',
+      keywords: ['transaction', 'credit card', 'debit', 'bank', 'statement', 'bobcard', 'emi', 'payment due'],
+      match: 'any'
+    }],
+    label: 'Finance/Banking',
+    confidence: 0.80,
+    priority: 85,
+    enabled: true
+  },
+
+  // ============================================================
+  // FINANCE — INVESTMENTS (mutual funds, stocks, SIP)
+  // ============================================================
+  {
+    id: 'groww-investments',
+    type: 'sender',
+    patterns: [{ domain: 'digest.groww.in' }],
+    label: 'Finance/Investments',
+    confidence: 0.95,
+    priority: 130,
+    enabled: true
+  },
+  {
+    id: 'nippon-mf',
+    type: 'sender',
+    patterns: [{ domain: 'campaign1.nipponindia.email' }],
+    label: 'Finance/Investments',
+    confidence: 0.95,
+    priority: 130,
+    enabled: true
+  },
+  {
+    id: 'investment-keywords',
+    type: 'keyword',
+    patterns: [{
+      location: 'subject',
+      keywords: ['mutual fund', 'sip', 'invest', 'portfolio', 'nav', 'fund', 'nfo', 'returns'],
+      match: 'any'
+    }],
+    label: 'Finance/Investments',
+    confidence: 0.80,
+    priority: 85,
+    enabled: true
+  },
+
+  // ============================================================
+  // FINANCE — INVOICES & RECEIPTS
+  // ============================================================
+  {
+    id: 'finance-keywords',
+    type: 'keyword',
+    patterns: [{
+      location: 'subject',
+      keywords: ['invoice', 'bill', 'receipt', 'payment confirmation'],
+      match: 'any'
+    }],
+    label: 'Finance/Invoices',
+    confidence: 0.75,
+    priority: 85,
+    enabled: true
+  },
+
+  // ============================================================
+  // TRAVEL
+  // ============================================================
+  {
+    id: 'irctc-railways',
+    type: 'sender',
+    patterns: [{ domain: 'irctc.co.in' }],
+    label: 'Travel',
+    confidence: 0.95,
+    priority: 130,
+    enabled: true
+  },
+  {
+    id: 'travel-domains',
+    type: 'sender',
+    patterns: [
+      { domain: 'content.goibibo.com' },
+      { domain: 'goibibo.com' },
+      { domain: 'makemytrip.com' },
+      { domain: 'marketing.goindigo.in' },
+      { domain: 'travel.e-redbus.in' },
+      { domain: 'sg.newsletter.agoda-emails.com' },
+      { domain: 'booking.com' },
+      { domain: 'airbnb.com' },
+      { domain: 'cleartrip.com' }
+    ],
+    label: 'Travel',
+    confidence: 0.90,
+    priority: 120,
+    enabled: true
+  },
+  {
+    id: 'uber-rides',
+    type: 'sender',
+    patterns: [{ domain: 'uber.com' }],
+    label: 'Travel',
+    confidence: 0.85,
+    priority: 100,
+    enabled: true
+  },
+  {
+    id: 'travel-pattern',
+    type: 'pattern',
+    patterns: [{
+      location: 'subject',
+      regex: '(booking|flight|hotel|reservation|itinerary|boarding pass|ticket|pnr)\\s*(confirm|detail|receipt|booked)',
+      flags: 'i'
+    }],
+    label: 'Travel',
+    confidence: 0.85,
+    priority: 110,
+    enabled: true
+  },
+
+  // ============================================================
+  // SHOPPING
+  // ============================================================
   {
     id: 'amazon-domain',
     type: 'sender',
@@ -32,8 +269,10 @@ var DEFAULT_RULES = [
       { domain: 'flipkart.com' },
       { domain: 'myntra.com' },
       { domain: 'ajio.com' },
-      { domain: 'ebay.com' },
-      { domain: 'etsy.com' }
+      { domain: 'bluestone.com' },
+      { domain: 'healthkart.com' },
+      { domain: 'ecomm.lenovo.com' },
+      { domain: 'district.in' }
     ],
     label: 'Shopping',
     confidence: 0.85,
@@ -53,71 +292,10 @@ var DEFAULT_RULES = [
     priority: 90,
     enabled: true
   },
-  
-  // Finance
-  {
-    id: 'finance-keywords',
-    type: 'keyword',
-    patterns: [{
-      location: 'subject',
-      keywords: ['invoice', 'bill', 'payment', 'statement', 'receipt', 'transaction'],
-      match: 'any'
-    }],
-    label: 'Finance/Invoices',
-    confidence: 0.75,
-    priority: 85,
-    enabled: true
-  },
-  {
-    id: 'bank-domains',
-    type: 'sender',
-    patterns: [
-      { domain: 'hdfcbank.net' },
-      { domain: 'icicibank.com' },
-      { domain: 'sbi.co.in' },
-      { domain: 'axisbank.com' },
-      { domain: 'kotak.com' },
-      { domain: 'paypal.com' },
-      { domain: 'razorpay.com' }
-    ],
-    label: 'Finance/Invoices',
-    confidence: 0.90,
-    priority: 100,
-    enabled: true
-  },
-  
-  // Travel
-  {
-    id: 'travel-domains',
-    type: 'sender',
-    patterns: [
-      { domain: 'makemytrip.com' },
-      { domain: 'goibibo.com' },
-      { domain: 'booking.com' },
-      { domain: 'airbnb.com' },
-      { domain: 'irctc.co.in' },
-      { domain: 'cleartrip.com' }
-    ],
-    label: 'Travel',
-    confidence: 0.90,
-    priority: 100,
-    enabled: true
-  },
-  {
-    id: 'travel-pattern',
-    type: 'pattern',
-    patterns: [{
-      location: 'subject',
-      regex: '(booking|flight|hotel|reservation|itinerary|boarding pass)\\s*(confirm|detail|receipt)',
-      flags: 'i'
-    }],
-    label: 'Travel',
-    confidence: 0.85,
-    priority: 110,
-    enabled: true
-  },
-  
-  // Newsletters
+
+  // ============================================================
+  // NEWSLETTERS & TECH
+  // ============================================================
   {
     id: 'list-id-header',
     type: 'header',
@@ -128,6 +306,20 @@ var DEFAULT_RULES = [
     label: 'Newsletters',
     confidence: 0.90,
     priority: 150,
+    enabled: true
+  },
+  {
+    id: 'newsletter-domains',
+    type: 'sender',
+    patterns: [
+      { domain: 'medium.com' },
+      { domain: 'tldrnewsletter.com' },
+      { domain: 'ollama.com' },
+      { domain: 'googlecloud@google.com', exact: true }
+    ],
+    label: 'Newsletters',
+    confidence: 0.90,
+    priority: 120,
     enabled: true
   },
   {
@@ -143,8 +335,72 @@ var DEFAULT_RULES = [
     priority: 50,
     enabled: true
   },
-  
-  // Work / Meetings
+
+  // ============================================================
+  // EDUCATION & LEARNING
+  // ============================================================
+  {
+    id: 'education-domains',
+    type: 'sender',
+    patterns: [
+      { domain: 'support.upgrad.com' },
+      { domain: 'udacity.com' },
+      { domain: 'itr.mail.codecademy.com' },
+      { domain: 'kaggle.com' },
+      { domain: 'coursera.org' }
+    ],
+    label: 'Education',
+    confidence: 0.90,
+    priority: 120,
+    enabled: true
+  },
+
+  // ============================================================
+  // FOOD & DELIVERY
+  // ============================================================
+  {
+    id: 'food-domains',
+    type: 'sender',
+    patterns: [
+      { domain: 'mailers.zomato.com' },
+      { domain: 'zomato.com' },
+      { domain: 'swiggy.com' },
+      { domain: 'swiggy.in' }
+    ],
+    label: 'Food & Delivery',
+    confidence: 0.90,
+    priority: 120,
+    enabled: true
+  },
+
+  // ============================================================
+  // REAL ESTATE
+  // ============================================================
+  {
+    id: 'nobroker-domain',
+    type: 'sender',
+    patterns: [
+      { domain: 'nobroker.in' },
+      { domain: 'homeservices.nobroker.in' }
+    ],
+    label: 'Real Estate',
+    confidence: 0.90,
+    priority: 120,
+    enabled: true
+  },
+
+  // ============================================================
+  // WORK / MEETINGS
+  // ============================================================
+  {
+    id: 'google-calendar',
+    type: 'sender',
+    patterns: [{ domain: 'calendar-notification@google.com', exact: true }],
+    label: 'Work/Meetings',
+    confidence: 0.95,
+    priority: 140,
+    enabled: true
+  },
   {
     id: 'calendar-invite',
     type: 'keyword',
@@ -158,23 +414,29 @@ var DEFAULT_RULES = [
     priority: 80,
     enabled: true
   },
+
+  // ============================================================
+  // GOOGLE ACCOUNT
+  // ============================================================
   {
-    id: 'google-calendar',
+    id: 'google-account',
     type: 'sender',
-    patterns: [{ domain: 'calendar-notification@google.com', exact: true }],
-    label: 'Work/Meetings',
-    confidence: 0.95,
-    priority: 140,
+    patterns: [{ domain: 'accounts.google.com' }],
+    label: 'Personal',
+    confidence: 0.85,
+    priority: 100,
     enabled: true
   },
-  
-  // Marketing
+
+  // ============================================================
+  // MARKETING (lowest priority — catch-all for promotional emails)
+  // ============================================================
   {
     id: 'marketing-keywords',
     type: 'keyword',
     patterns: [{
       location: 'subject',
-      keywords: ['sale', 'discount', 'offer', 'deal', 'promotion', 'limited time', 'exclusive', 'free'],
+      keywords: ['sale', 'discount', 'offer', 'deal', 'promotion', 'limited time', 'exclusive', 'cashback', 'coupon'],
       match: 'any'
     }],
     label: 'Marketing',
@@ -637,12 +899,18 @@ var FallbackClassifier = {
     var text = subject + ' ' + body;
     
     var keywordMap = {
-      'Shopping': ['order', 'shipped', 'delivery', 'tracking', 'amazon', 'flipkart'],
-      'Finance/Invoices': ['invoice', 'payment', 'bill', 'transaction', 'bank'],
-      'Travel': ['flight', 'hotel', 'booking', 'reservation', 'travel'],
+      'Jobs': ['job', 'hiring', 'engineer', 'developer', 'linkedin', 'naukri', 'vacancy', 'career'],
+      'Finance/Banking': ['transaction', 'credit card', 'debit', 'bank', 'statement', 'bobcard', 'emi', 'indusind'],
+      'Finance/Investments': ['mutual fund', 'sip', 'invest', 'portfolio', 'groww', 'nfo', 'fund', 'nav'],
+      'Finance/Invoices': ['invoice', 'payment', 'bill', 'receipt'],
+      'Travel': ['flight', 'hotel', 'booking', 'reservation', 'travel', 'ticket', 'irctc', 'train'],
+      'Shopping': ['order', 'shipped', 'delivery', 'tracking', 'amazon', 'flipkart', 'myntra'],
+      'Education': ['course', 'learn', 'tutorial', 'certificate', 'upgrad', 'codecademy', 'kaggle'],
+      'Food & Delivery': ['zomato', 'swiggy', 'food', 'restaurant', 'menu'],
+      'Real Estate': ['property', 'rent', 'flat', 'house', 'nobroker', 'apartment'],
       'Work/Meetings': ['meeting', 'agenda', 'calendar', 'invite'],
-      'Newsletters': ['unsubscribe', 'newsletter'],
-      'Marketing': ['sale', 'discount', 'offer', 'deal']
+      'Newsletters': ['unsubscribe', 'newsletter', 'digest'],
+      'Marketing': ['sale', 'discount', 'offer', 'deal', 'cashback']
     };
     
     var bestLabel = 'Uncategorized';

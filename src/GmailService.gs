@@ -171,13 +171,19 @@ var LabelManager = {
    * Default label taxonomy.
    */
   DEFAULT_LABELS: [
-    'Shopping',
+    'Jobs',
+    'Finance/Banking',
+    'Finance/Investments',
     'Finance/Invoices',
     'Finance/Receipts',
+    'Travel',
+    'Shopping',
+    'Newsletters',
+    'Education',
+    'Food & Delivery',
+    'Real Estate',
     'Work/Projects',
     'Work/Meetings',
-    'Travel',
-    'Newsletters',
     'Marketing',
     'Personal',
     'Uncategorized'
