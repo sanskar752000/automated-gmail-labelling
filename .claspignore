@@ -1,0 +1,10 @@
+# Clasp ignore — these files are NOT pushed to Apps Script
+REQUIREMENTS.md
+README.md
+.git/**
+.gitignore
+.clasp.json
+.claspignore
+.gemini/**
+node_modules/**
+*.md

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; padding: 16px; background: #f8f9fa; color: #202124; }
+    h2 { font-size: 18px; margin-bottom: 16px; color: #1a73e8; }
+    .label-list { max-height: 250px; overflow-y: auto; }
+    .label-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 6px; margin-bottom: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .label-item .label-name { flex: 1; font-size: 14px; }
+    .label-item .remove-btn { background: none; border: none; color: #d93025; cursor: pointer; font-size: 16px; padding: 0 4px; }
+    .label-item .remove-btn:hover { background: #fce8e6; border-radius: 4px; }
+    .label-dot { width: 8px; height: 8px; border-radius: 50%; background: #1a73e8; }
+    .add-section { margin-top: 12px; display: flex; gap: 8px; }
+    .add-section input { flex: 1; padding: 8px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px; }
+    .add-section input:focus { border-color: #1a73e8; outline: none; }
+    .btn { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-small { padding: 6px 12px; font-size: 13px; }
+    .actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+    .status { padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 13px; display: none; }
+    .status.success { display: block; background: #e6f4ea; color: #1e8e3e; }
+    .status.error { display: block; background: #fce8e6; color: #d93025; }
+    .hint { font-size: 12px; color: #5f6368; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h2>🏷️ Label Configuration</h2>
+  <p class="hint">Use "/" for nested labels (e.g., Finance/Invoices). Labels are created in Gmail automatically.</p>
+  
+  <div class="label-list" id="labelList">
+    <p style="color: #5f6368;">Loading labels...</p>
+  </div>
+  
+  <div class="add-section">
+    <input type="text" id="newLabel" placeholder="New label name (e.g., Social)" onkeydown="if(event.key==='Enter')addLabel()">
+    <button class="btn btn-primary btn-small" onclick="addLabel()">Add</button>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-primary" onclick="saveLabels()">Save Changes</button>
+  </div>
+  
+  <div class="status" id="status"></div>
+  
+  <script>
+    var currentLabels = [];
+    
+    google.script.run
+      .withSuccessHandler(function(labels) {
+        currentLabels = labels;
+        renderLabels();
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById('labelList').innerHTML = '<p style="color:#d93025;">Error: ' + err.message + '</p>';
+      })
+      .getLabelsForDialog();
+    
+    function renderLabels() {
+      var html = '';
+      for (var i = 0; i < currentLabels.length; i++) {
+        html += '<div class="label-item">' +
+          '<span class="label-dot"></span>' +
+          '<span class="label-name">' + escapeHtml(currentLabels[i]) + '</span>' +
+          '<button class="remove-btn" onclick="removeLabel(' + i + ')" title="Remove">✕</button>' +
+        '</div>';
+      }
+      document.getElementById('labelList').innerHTML = html || '<p>No labels configured.</p>';
+    }
+    
+    function addLabel() {
+      var input = document.getElementById('newLabel');
+      var name = input.value.trim();
+      if (!name) return;
+      if (currentLabels.indexOf(name) !== -1) {
+        showStatus('Label already exists', 'error');
+        return;
+      }
+      currentLabels.push(name);
+      input.value = '';
+      renderLabels();
+    }
+    
+    function removeLabel(index) {
+      currentLabels.splice(index, 1);
+      renderLabels();
+    }
+    
+    function saveLabels() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showStatus(result.message, 'success');
+        })
+        .withFailureHandler(function(err) {
+          showStatus('Error: ' + err.message, 'error');
+        })
+        .saveLabelsFromDialog(currentLabels);
+    }
+    
+    function showStatus(msg, type) {
+      var el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+      setTimeout(function() { el.className = 'status'; }, 3000);
+    }
+    
+    function escapeHtml(str) {
+      return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>

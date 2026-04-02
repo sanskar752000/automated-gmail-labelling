@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Google Sans', Arial, sans-serif; padding: 16px; background: #f8f9fa; color: #202124; }
+    h2 { font-size: 18px; margin-bottom: 4px; color: #1a73e8; }
+    .subtitle { font-size: 13px; color: #5f6368; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #3c4043; }
+    select, input[type="text"], input[type="password"] {
+      width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px;
+      font-size: 14px; transition: border-color 0.2s;
+    }
+    select:focus, input:focus { border-color: #1a73e8; outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+    .btn { padding: 10px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-test { background: #e8f0fe; color: #1967d2; }
+    .btn-test:hover { background: #d2e3fc; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .status-card { padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
+    .status-card.configured { background: #e6f4ea; color: #1e8e3e; }
+    .status-card.not-configured { background: #fce8e6; color: #d93025; }
+    .status { padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 13px; display: none; }
+    .status.success { display: block; background: #e6f4ea; color: #1e8e3e; }
+    .status.error { display: block; background: #fce8e6; color: #d93025; }
+    .hint { font-size: 11px; color: #80868b; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <h2>🔑 API Key Setup</h2>
+  <p class="subtitle">Configure your LLM provider for email classification</p>
+  
+  <div class="status-card" id="currentStatus">Checking status...</div>
+  
+  <div class="form-group">
+    <label for="provider">LLM Provider</label>
+    <select id="provider" onchange="updateHints()">
+      <option value="gemini" selected>Google Gemini (Free — recommended)</option>
+      <option value="openai">OpenAI (Paid)</option>
+      <option value="anthropic">Anthropic (Paid)</option>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label for="apiKey">API Key</label>
+    <input type="password" id="apiKey" placeholder="Paste your API key here">
+    <p class="hint" id="keyHint">Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-test" onclick="testKey()">Test Connection</button>
+    <button class="btn btn-primary" onclick="saveKey()">Save</button>
+  </div>
+  
+  <div class="status" id="status"></div>
+  
+  <script>
+    // Check current status
+    google.script.run
+      .withSuccessHandler(function(result) {
+        var el = document.getElementById('currentStatus');
+        if (result.configured) {
+          el.className = 'status-card configured';
+          el.textContent = '✅ API key configured (Provider: ' + result.provider + ')';
+          document.getElementById('provider').value = result.provider;
+        } else {
+          el.className = 'status-card not-configured';
+          el.textContent = '⚠️ No API key configured. Set up below.';
+        }
+      })
+      .getApiKeyStatus();
+    
+    function updateHints() {
+      var provider = document.getElementById('provider').value;
+      var hint = document.getElementById('keyHint');
+      var hintMap = {
+        'gemini': 'Get a free key from <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>',
+        'openai': 'Get a key from <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>',
+        'anthropic': 'Get a key from <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>'
+      };
+      hint.innerHTML = hintMap[provider];
+    }
+    
+    function saveKey() {
+      var apiKey = document.getElementById('apiKey').value.trim();
+      var provider = document.getElementById('provider').value;
+      
+      if (!apiKey) {
+        showStatus('Please enter an API key', 'error');
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showStatus(result.message, 'success');
+          document.getElementById('currentStatus').className = 'status-card configured';
+          document.getElementById('currentStatus').textContent = '✅ API key configured (Provider: ' + provider + ')';
+        })
+        .withFailureHandler(function(err) {
+          showStatus('Error: ' + err.message, 'error');
+        })
+        .saveApiKey(apiKey, provider);
+    }
+    
+    function testKey() {
+      showStatus('Testing connection...', 'success');
+      // Test would require a server-side call; for now, just save and validate
+      saveKey();
+    }
+    
+    function showStatus(msg, type) {
+      var el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+      if (type === 'success') {
+        setTimeout(function() { el.className = 'status'; }, 3000);
+      }
+    }
+  </script>
+</body>
+</html>

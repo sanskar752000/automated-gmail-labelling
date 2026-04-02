@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Clasp
+.clasp.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Gemini
+.gemini/
