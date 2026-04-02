@@ -408,8 +408,8 @@ function analyzeMyEmails() {
   var senders = {};
   var subjectWords = {};
   
-  // Scan last 200 threads (mix of read + unread)
-  var threads = GmailApp.search('', 0, 200);
+  // Scan last 400 threads (mix of read + unread)
+  var threads = GmailApp.search('', 0, 400);
   var totalEmails = 0;
   
   for (var t = 0; t < threads.length; t++) {
