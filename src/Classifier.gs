@@ -823,6 +823,9 @@ var ClassificationRouter = {
       var llmResult = LLMClient.classify(email, labels);
       
       if (llmResult && llmResult.label) {
+        // Learn from LLM classification to auto-generate rules
+        RuleLearner.learn(email, llmResult);
+        
         // If we had a rule result, check consensus
         if (ruleResult && ruleResult.label === llmResult.label) {
           // Consensus — boost confidence
@@ -936,3 +939,287 @@ var FallbackClassifier = {
     };
   }
 };
+
+// ============================================================
+// RULE LEARNER (auto-generates rules from LLM classifications)
+// ============================================================
+
+var RuleLearner = {
+  
+  /**
+   * Minimum number of LLM classifications for the same sender→label
+   * before a rule is auto-generated.
+   */
+  LEARN_THRESHOLD: 3,
+  
+  /**
+   * Minimum LLM confidence to count toward learning.
+   */
+  MIN_CONFIDENCE: 0.70,
+  
+  /**
+   * Called after every LLM classification.
+   * Tracks sender→label patterns and auto-generates rules.
+   * 
+   * @param {Object} email - Parsed email object
+   * @param {Object} result - LLM classification result { label, confidence }
+   */
+  learn: function(email, result) {
+    if (!result || !result.label || result.confidence < this.MIN_CONFIDENCE) {
+      return;
+    }
+    
+    // Extract domain from sender
+    var domain = this.extractDomain(email.from);
+    if (!domain) return;
+    
+    // Track this classification in learning history
+    var history = this.getLearningHistory();
+    var key = domain;
+    
+    if (!history[key]) {
+      history[key] = { labels: {}, total: 0 };
+    }
+    
+    history[key].total++;
+    history[key].labels[result.label] = (history[key].labels[result.label] || 0) + 1;
+    
+    this.saveLearningHistory(history);
+    
+    // Check if we should generate a rule
+    var labelCount = history[key].labels[result.label];
+    if (labelCount >= this.LEARN_THRESHOLD) {
+      // Check consistency — is this label dominant for this domain?
+      var consistency = labelCount / history[key].total;
+      if (consistency >= 0.7) {
+        this.generateRule(domain, result.label, consistency);
+      }
+    }
+  },
+  
+  /**
+   * Auto-generate a sender rule and store it.
+   */
+  generateRule: function(domain, label, consistency) {
+    // Check if a rule already exists for this domain
+    var learnedRules = this.getLearnedRules();
+    var ruleId = 'learned-' + domain.replace(/[^a-z0-9]/g, '-');
+    
+    for (var i = 0; i < learnedRules.length; i++) {
+      if (learnedRules[i].id === ruleId) {
+        // Rule already exists — update confidence
+        learnedRules[i].confidence = Math.min(0.95, consistency);
+        this.saveLearnedRules(learnedRules);
+        return;
+      }
+    }
+    
+    // Create new rule
+    var newRule = {
+      id: ruleId,
+      type: 'sender',
+      patterns: [{ domain: domain }],
+      label: label,
+      confidence: Math.min(0.90, consistency),
+      priority: 105,
+      enabled: true,
+      learned: true,
+      learnedAt: new Date().toISOString()
+    };
+    
+    learnedRules.push(newRule);
+    this.saveLearnedRules(learnedRules);
+    
+    Logger.log('🧠 Auto-learned rule: ' + domain + ' → ' + label +
+      ' (confidence: ' + consistency.toFixed(2) + ')');
+  },
+  
+  /**
+   * Extract domain from email address.
+   */
+  extractDomain: function(email) {
+    if (!email) return null;
+    var match = email.match(/@(.+)$/);
+    return match ? match[1].toLowerCase() : null;
+  },
+  
+  // ============================================================
+  // STORAGE
+  // ============================================================
+  
+  getLearningHistory: function() {
+    var props = PropertiesService.getScriptProperties();
+    var data = props.getProperty('learning_history');
+    if (!data) return {};
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return {};
+    }
+  },
+  
+  saveLearningHistory: function(history) {
+    var json = JSON.stringify(history);
+    // Prune if approaching size limit (9KB)
+    if (json.length > 8000) {
+      history = this.pruneHistory(history);
+      json = JSON.stringify(history);
+    }
+    PropertiesService.getScriptProperties().setProperty('learning_history', json);
+  },
+  
+  getLearnedRules: function() {
+    var props = PropertiesService.getScriptProperties();
+    var data = props.getProperty('learned_rules');
+    if (!data) return [];
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return [];
+    }
+  },
+  
+  saveLearnedRules: function(rules) {
+    var json = JSON.stringify(rules);
+    if (json.length > 8000) {
+      // Keep only the most recent 50 rules
+      rules = rules.slice(-50);
+      json = JSON.stringify(rules);
+    }
+    PropertiesService.getScriptProperties().setProperty('learned_rules', json);
+  },
+  
+  /**
+   * Prune learning history — keep only domains with 2+ classifications.
+   */
+  pruneHistory: function(history) {
+    var pruned = {};
+    for (var key in history) {
+      if (history[key].total >= 2) {
+        pruned[key] = history[key];
+      }
+    }
+    return pruned;
+  },
+  
+  /**
+   * View all auto-learned rules. Run from editor.
+   */
+  showLearnedRules: function() {
+    var rules = this.getLearnedRules();
+    if (rules.length === 0) {
+      Logger.log('No auto-learned rules yet. Process more emails!');
+      return rules;
+    }
+    Logger.log('=== Auto-Learned Rules (' + rules.length + '/50 slots used) ===');
+    for (var i = 0; i < rules.length; i++) {
+      var r = rules[i];
+      var status = r.confidence >= 0.85 ? ' GRADUATE CANDIDATE' : '';
+      Logger.log('  ' + (i + 1) + '. ' + r.patterns[0].domain + ' -> ' + r.label +
+        ' (confidence: ' + r.confidence.toFixed(2) + ')' + status);
+    }
+    
+    var candidates = rules.filter(function(r) { return r.confidence >= 0.85; });
+    if (candidates.length > 0) {
+      Logger.log(candidates.length + ' rules ready for graduation. Run graduateLearnedRules() to promote them.');
+    }
+    
+    return rules;
+  },
+  
+  /**
+   * Graduate high-confidence learned rules into permanent stored rules.
+   * Graduated rules are:
+   *   1. Added to ConfigManager stored rules (persistent)
+   *   2. Removed from learned_rules (frees up space)
+   *   3. Removed from learning_history (frees up space)
+   * 
+   * @param {number} [minConfidence=0.85] - Minimum confidence to graduate
+   * @returns {Array} List of graduated rules
+   */
+  graduateRules: function(minConfidence) {
+    minConfidence = minConfidence || 0.85;
+    
+    var learnedRules = this.getLearnedRules();
+    var toGraduate = [];
+    var toKeep = [];
+    
+    for (var i = 0; i < learnedRules.length; i++) {
+      if (learnedRules[i].confidence >= minConfidence) {
+        toGraduate.push(learnedRules[i]);
+      } else {
+        toKeep.push(learnedRules[i]);
+      }
+    }
+    
+    if (toGraduate.length === 0) {
+      Logger.log('No learned rules meet the graduation threshold (' + minConfidence + ').');
+      Logger.log('Current learned rules: ' + learnedRules.length);
+      return [];
+    }
+    
+    // Get stored rules WITHOUT learned ones (to avoid duplicates)
+    var props = PropertiesService.getScriptProperties();
+    var rulesJson = props.getProperty('rules');
+    var storedRules;
+    try {
+      storedRules = rulesJson ? JSON.parse(rulesJson) : DEFAULT_RULES.slice();
+    } catch (e) {
+      storedRules = DEFAULT_RULES.slice();
+    }
+    
+    for (var g = 0; g < toGraduate.length; g++) {
+      var rule = toGraduate[g];
+      rule.graduated = true;
+      rule.graduatedAt = new Date().toISOString();
+      delete rule.learned;
+      rule.priority = Math.max(rule.priority, 110);
+      
+      storedRules.push(rule);
+      Logger.log('Graduated: ' + rule.patterns[0].domain + ' -> ' + rule.label);
+    }
+    
+    ConfigManager.setRules(storedRules);
+    this.saveLearnedRules(toKeep);
+    
+    // Clean up learning history for graduated domains
+    var history = this.getLearningHistory();
+    for (var h = 0; h < toGraduate.length; h++) {
+      var domain = toGraduate[h].patterns[0].domain;
+      delete history[domain];
+    }
+    this.saveLearningHistory(history);
+    
+    Logger.log('=== Graduation Summary ===');
+    Logger.log('Graduated: ' + toGraduate.length + ' rules');
+    Logger.log('Remaining learned: ' + toKeep.length + ' rules');
+    Logger.log('Total stored rules: ' + storedRules.length);
+    
+    return toGraduate;
+  },
+  
+  /**
+   * Reset all learned data (rules + history).
+   */
+  resetAll: function() {
+    PropertiesService.getScriptProperties().deleteProperty('learned_rules');
+    PropertiesService.getScriptProperties().deleteProperty('learning_history');
+    Logger.log('All learned rules and history cleared.');
+  }
+};
+
+// ============================================================
+// GLOBAL FUNCTIONS (run from Apps Script editor)
+// ============================================================
+
+function showLearnedRules() {
+  RuleLearner.showLearnedRules();
+}
+
+function graduateLearnedRules() {
+  RuleLearner.graduateRules();
+}
+
+function resetLearnedRules() {
+  RuleLearner.resetAll();
+}

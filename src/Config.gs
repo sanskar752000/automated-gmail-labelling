@@ -95,14 +95,33 @@ var ConfigManager = {
   getRules: function() {
     var props = PropertiesService.getScriptProperties();
     var rulesJson = props.getProperty('rules');
-    if (!rulesJson) return DEFAULT_RULES;
+    var baseRules;
     
-    try {
-      return JSON.parse(rulesJson);
-    } catch (e) {
-      Logger.log('Error parsing rules, using defaults: ' + e.message);
-      return DEFAULT_RULES;
+    if (!rulesJson) {
+      baseRules = DEFAULT_RULES;
+    } else {
+      try {
+        baseRules = JSON.parse(rulesJson);
+      } catch (e) {
+        Logger.log('Error parsing rules, using defaults: ' + e.message);
+        baseRules = DEFAULT_RULES;
+      }
     }
+    
+    // Merge with auto-learned rules
+    try {
+      var learnedJson = props.getProperty('learned_rules');
+      if (learnedJson) {
+        var learnedRules = JSON.parse(learnedJson);
+        if (learnedRules.length > 0) {
+          baseRules = baseRules.concat(learnedRules);
+        }
+      }
+    } catch (e) {
+      Logger.log('Error loading learned rules: ' + e.message);
+    }
+    
+    return baseRules;
   },
   
   /**
