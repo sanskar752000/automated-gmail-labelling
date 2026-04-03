@@ -30,7 +30,9 @@ function runTests() {
     { name: 'FallbackClassifier', fn: testFallbackClassifier },
     { name: 'LLMResponseParser', fn: testLLMResponseParser },
     { name: 'ConfigManager', fn: testConfigManager },
-    { name: 'GmailServiceHelpers', fn: testGmailServiceHelpers }
+    { name: 'GmailServiceHelpers', fn: testGmailServiceHelpers },
+    { name: 'RuleLearner', fn: testRuleLearner },
+    { name: 'Graduation', fn: testGraduation }
   ];
   
   for (var i = 0; i < testSuites.length; i++) {
@@ -572,6 +574,205 @@ function testGmailServiceHelpers() {
       fn: function() {
         var result = GmailService.extractEmailAddress('');
         assertEqual(result, '', 'Should return empty for empty input');
+      }
+    }
+  ]);
+}
+
+// ============================================================
+// RULE LEARNER TESTS
+// ============================================================
+
+function testRuleLearner() {
+  return runTestCases([
+    {
+      name: 'No rule created after 1 classification',
+      fn: function() {
+        RuleLearner.resetAll();
+        var email = { from: 'test@learning-test.com', subject: 'Test' };
+        var result = { label: 'Education', confidence: 0.85 };
+        
+        RuleLearner.learn(email, result);
+        
+        var rules = RuleLearner.getLearnedRules();
+        assertEqual(rules.length, 0, 'Should not create rule after 1 classification');
+        RuleLearner.resetAll();
+      }
+    },
+    {
+      name: 'No rule created after 2 classifications',
+      fn: function() {
+        RuleLearner.resetAll();
+        var email = { from: 'test@learning-test.com', subject: 'Test' };
+        var result = { label: 'Education', confidence: 0.85 };
+        
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        
+        var rules = RuleLearner.getLearnedRules();
+        assertEqual(rules.length, 0, 'Should not create rule after 2 classifications');
+        RuleLearner.resetAll();
+      }
+    },
+    {
+      name: 'Rule created after 3 consistent classifications',
+      fn: function() {
+        RuleLearner.resetAll();
+        var email = { from: 'test@learning-test.com', subject: 'Test' };
+        var result = { label: 'Education', confidence: 0.85 };
+        
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        
+        var rules = RuleLearner.getLearnedRules();
+        assertEqual(rules.length, 1, 'Should create 1 rule after 3 classifications');
+        assertEqual(rules[0].label, 'Education', 'Rule should have correct label');
+        assertEqual(rules[0].patterns[0].domain, 'learning-test.com', 'Rule should have correct domain');
+        RuleLearner.resetAll();
+      }
+    },
+    {
+      name: 'Low confidence classifications are ignored',
+      fn: function() {
+        RuleLearner.resetAll();
+        var email = { from: 'test@low-conf.com', subject: 'Test' };
+        var result = { label: 'Marketing', confidence: 0.50 };
+        
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        
+        var rules = RuleLearner.getLearnedRules();
+        assertEqual(rules.length, 0, 'Should not learn from low confidence results');
+        RuleLearner.resetAll();
+      }
+    },
+    {
+      name: 'Inconsistent labels do not create rule',
+      fn: function() {
+        RuleLearner.resetAll();
+        var email = { from: 'test@inconsistent.com', subject: 'Test' };
+        
+        RuleLearner.learn(email, { label: 'Jobs', confidence: 0.85 });
+        RuleLearner.learn(email, { label: 'Education', confidence: 0.85 });
+        RuleLearner.learn(email, { label: 'Marketing', confidence: 0.85 });
+        
+        var rules = RuleLearner.getLearnedRules();
+        assertEqual(rules.length, 0, 'Should not create rule for inconsistent labels');
+        RuleLearner.resetAll();
+      }
+    },
+    {
+      name: 'Domain extraction works',
+      fn: function() {
+        assertEqual(RuleLearner.extractDomain('user@example.com'), 'example.com', 'Simple domain');
+        assertEqual(RuleLearner.extractDomain('user@sub.domain.co.in'), 'sub.domain.co.in', 'Subdomain');
+        assertEqual(RuleLearner.extractDomain(null), null, 'Null input');
+        assertEqual(RuleLearner.extractDomain(''), null, 'Empty input');
+      }
+    },
+    {
+      name: 'resetAll clears everything',
+      fn: function() {
+        var email = { from: 'test@reset-test.com', subject: 'Test' };
+        var result = { label: 'Jobs', confidence: 0.90 };
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        RuleLearner.learn(email, result);
+        
+        assert(RuleLearner.getLearnedRules().length > 0, 'Should have rules before reset');
+        
+        RuleLearner.resetAll();
+        
+        assertEqual(RuleLearner.getLearnedRules().length, 0, 'Should have 0 rules after reset');
+        var history = RuleLearner.getLearningHistory();
+        var keys = Object.keys(history);
+        assertEqual(keys.length, 0, 'Should have empty history after reset');
+      }
+    }
+  ]);
+}
+
+// ============================================================
+// GRADUATION TESTS
+// ============================================================
+
+function testGraduation() {
+  return runTestCases([
+    {
+      name: 'Graduation moves rule to stored rules',
+      fn: function() {
+        RuleLearner.resetAll();
+        
+        var email = { from: 'alerts@grad-test-bank.com', subject: 'Transaction' };
+        var result = { label: 'Finance/Banking', confidence: 0.90 };
+        for (var i = 0; i < 4; i++) {
+          RuleLearner.learn(email, result);
+        }
+        
+        var learnedBefore = RuleLearner.getLearnedRules().length;
+        assert(learnedBefore > 0, 'Should have learned rules before graduation');
+        
+        var graduated = RuleLearner.graduateRules(0.85);
+        
+        assert(graduated.length > 0, 'Should graduate at least 1 rule');
+        assertEqual(RuleLearner.getLearnedRules().length, 0, 'Learned rules should be empty after graduation');
+        
+        var allRules = ConfigManager.getRules();
+        var found = allRules.filter(function(r) { return r.id && r.id.indexOf('grad-test-bank') !== -1; });
+        assert(found.length > 0, 'Graduated rule should be in stored rules');
+        assert(found[0].graduated === true, 'Rule should be marked as graduated');
+        
+        // Clean up
+        RuleLearner.resetAll();
+        var cleaned = allRules.filter(function(r) { return !r.id || r.id.indexOf('grad-test-bank') === -1; });
+        ConfigManager.setRules(cleaned);
+      }
+    },
+    {
+      name: 'Low confidence rules are NOT graduated',
+      fn: function() {
+        RuleLearner.resetAll();
+        
+        var email = { from: 'test@low-grad.com', subject: 'Test' };
+        var result = { label: 'Marketing', confidence: 0.75 };
+        for (var i = 0; i < 3; i++) {
+          RuleLearner.learn(email, result);
+        }
+        
+        var graduated = RuleLearner.graduateRules(0.85);
+        assertEqual(graduated.length, 0, 'Should not graduate low confidence rules');
+        
+        var remaining = RuleLearner.getLearnedRules();
+        assert(remaining.length > 0, 'Low confidence rule should remain in learned rules');
+        
+        RuleLearner.resetAll();
+      }
+    },
+    {
+      name: 'Graduation cleans up learning history',
+      fn: function() {
+        RuleLearner.resetAll();
+        
+        var email = { from: 'test@history-clean.com', subject: 'Test' };
+        var result = { label: 'Travel', confidence: 0.90 };
+        for (var i = 0; i < 4; i++) {
+          RuleLearner.learn(email, result);
+        }
+        
+        var historyBefore = RuleLearner.getLearningHistory();
+        assert(historyBefore['history-clean.com'] !== undefined, 'History should exist before graduation');
+        
+        RuleLearner.graduateRules();
+        
+        var historyAfter = RuleLearner.getLearningHistory();
+        assert(historyAfter['history-clean.com'] === undefined, 'History should be cleaned after graduation');
+        
+        // Clean up stored rules
+        RuleLearner.resetAll();
+        var allRules = ConfigManager.getRules();
+        ConfigManager.setRules(allRules.filter(function(r) { return !r.id || r.id.indexOf('history-clean') === -1; }));
       }
     }
   ]);
