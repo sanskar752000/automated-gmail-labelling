@@ -45,30 +45,53 @@ var LLMClient = {
    * @returns {Object} { label, confidence, reasoning }
    */
   classify: function(email, labels) {
-    // Check API quota
-    if (!QuotaManager.checkApiQuota()) {
-      throw new Error('API quota exceeded');
-    }
+    var maxRetries = 3;
+    var lastError;
     
-    var prompt = this.buildPrompt(email, labels);
-    var response;
-    
-    try {
-      if (this.API_PROVIDER === 'gemini') {
-        response = this.callGemini(prompt);
-      } else if (this.API_PROVIDER === 'openai') {
-        response = this.callOpenAI(prompt);
-      } else if (this.API_PROVIDER === 'anthropic') {
-        response = this.callAnthropic(prompt);
-      } else {
-        throw new Error('Unsupported LLM provider: ' + this.API_PROVIDER);
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Check API quota check (internal tracker)
+        if (!QuotaManager.checkApiQuota()) {
+          throw new Error('API quota exceeded');
+        }
+        
+        var prompt = this.buildPrompt(email, labels);
+        var response;
+        
+        if (this.API_PROVIDER === 'gemini') {
+          response = this.callGemini(prompt);
+        } else if (this.API_PROVIDER === 'openai') {
+          response = this.callOpenAI(prompt);
+        } else if (this.API_PROVIDER === 'anthropic') {
+          response = this.callAnthropic(prompt);
+        } else {
+          throw new Error('Unsupported LLM provider: ' + this.API_PROVIDER);
+        }
+        
+        return this.parseResponse(response);
+        
+      } catch (error) {
+        lastError = error;
+        var errorMsg = error.message || '';
+        
+        // Check if it's a transient error we should retry (429 = Rate Limit, 5xx = Server Error)
+        var isRetryable = errorMsg.indexOf('429') !== -1 || 
+                          errorMsg.indexOf('500') !== -1 || 
+                          errorMsg.indexOf('503') !== -1 ||
+                          errorMsg.indexOf('quota') !== -1;
+        
+        if (isRetryable && attempt < maxRetries) {
+          var waitTime = Math.pow(2, attempt) * 5000; // 5s, 10s, 20s
+          Logger.log('⚠️ LLM Rate limit hit (429). Retrying in ' + (waitTime/1000) + 's... (Attempt ' + (attempt + 1) + ')');
+          Utilities.sleep(waitTime);
+          continue;
+        }
+        
+        Logger.log('❌ LLM API error (' + this.API_PROVIDER + '): ' + errorMsg);
+        throw error;
       }
-      
-      return this.parseResponse(response);
-    } catch (error) {
-      Logger.log('LLM API error (' + this.API_PROVIDER + '): ' + error.message);
-      throw error;
     }
+    throw lastError;
   },
   
   /**
