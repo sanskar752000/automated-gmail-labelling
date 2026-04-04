@@ -32,7 +32,8 @@ function runTests() {
     { name: 'ConfigManager', fn: testConfigManager },
     { name: 'GmailServiceHelpers', fn: testGmailServiceHelpers },
     { name: 'RuleLearner', fn: testRuleLearner },
-    { name: 'Graduation', fn: testGraduation }
+    { name: 'Graduation', fn: testGraduation },
+    { name: 'Backfill/Reset', fn: testBackfillReset }
   ];
   
   for (var i = 0; i < testSuites.length; i++) {
@@ -774,6 +775,60 @@ function testGraduation() {
         RuleLearner.resetAll();
         var allRules = ConfigManager.getRules();
         ConfigManager.setRules(allRules.filter(function(r) { return !r.id || r.id.indexOf('history-clean') === -1; }));
+      }
+    }
+  ]);
+}
+
+// ============================================================
+// BACKFILL / RESET TESTS
+// ============================================================
+
+function testBackfillReset() {
+  return runTestCases([
+    {
+      name: 'resetBackfillState removes labels and clears properties',
+      fn: function() {
+        var deletedProps = [];
+        var removedFromThreadsCount = 0;
+        
+        // Mock PropertiesService
+        var oldProps = PropertiesService.getScriptProperties;
+        PropertiesService.getScriptProperties = function() {
+          return {
+            getProperty: function(key) {
+               if (key === 'backfill_status') return 'running';
+               return null;
+            },
+            deleteProperty: function(key) {
+              deletedProps.push(key);
+            }
+          };
+        };
+        
+        // Mock GmailApp
+        var oldGmail = GmailApp.getUserLabelByName;
+        GmailApp.getUserLabelByName = function(name) {
+          return {
+            getThreads: function() { return [{}, {}]; }, // 2 mock threads
+            removeFromThreads: function(threads) {
+              removedFromThreadsCount += threads.length;
+            }
+          };
+        };
+        
+        try {
+          resetBackfillState();
+          
+          // Verify
+          assert(deletedProps.indexOf('backfill_status') !== -1, 'Should delete status property');
+          assert(deletedProps.indexOf('backfill_offset') !== -1, 'Should delete offset property');
+          assertEqual(removedFromThreadsCount, 4, 'Should remove 2 categories + 2 markers (mock test logic)');
+        } finally {
+          // Restore mocks
+          PropertiesService.getScriptProperties = oldProps;
+          GmailApp.getUserLabelByName = oldGmail;
+        }
       }
     }
   ]);

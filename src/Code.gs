@@ -273,25 +273,30 @@ function backfillEmails() {
       }
       
       var messages = thread.getMessages();
+      var threadOk = true;
       
       for (var m = 0; m < messages.length; m++) {
         try {
           var email = GmailService.parseMessage(messages[m]);
           var result = classifyEmail(email);
           
-          LabelManager.applyLabelToEmail(email, result.label);
-          ConfigManager.updateSenderHistory(email.from, result.label);
-          ConfigManager.incrementStats(result.source);
-          
-          batchProcessed++;
-          totalProcessed++;
+          if (result && result.label) {
+            LabelManager.applyLabelToEmail(email, result.label);
+            ConfigManager.updateSenderHistory(email.from, result.label);
+            ConfigManager.incrementStats(result.source);
+            batchProcessed++;
+            totalProcessed++;
+          }
         } catch (msgError) {
           Logger.log('Backfill: Error processing message: ' + msgError.message);
+          threadOk = false; // Mark this thread as failed - don't add the label
         }
       }
       
-      // Mark thread as backfill-processed
-      thread.addLabel(backfillLabel);
+      // Only mark thread as backfill-processed if all classification calls worked
+      if (threadOk && backfillLabel) {
+        thread.addLabel(backfillLabel);
+      }
     }
     
     // Update progress
@@ -353,6 +358,54 @@ function cleanupBackfillTrigger() {
       ScriptApp.deleteTrigger(trigger);
     }
   });
+}
+
+/**
+ * Reset backfill state so you can start over.
+ * Removes the 'backfill-processed' label from all threads and resets progress counters.
+ */
+function resetBackfillState() {
+  var props = PropertiesService.getScriptProperties();
+  var labelName = 'backfill-processed';
+  var backfillLabel = GmailApp.getUserLabelByName(labelName);
+  
+  if (backfillLabel) {
+    var threads = backfillLabel.getThreads();
+    if (threads.length === 0) {
+      Logger.log('No threads found with ' + labelName + '.');
+    } else {
+      Logger.log('🧹 Reverting ' + threads.length + ' threads. Removing classification labels...');
+      
+      // Get all possible category labels to clean up
+      var categoryLabels = GmailService.DEFAULT_LABELS || [];
+      var labelsToRemove = categoryLabels.map(function(l) { 
+        return GmailApp.getUserLabelByName(l); 
+      }).filter(function(l) { return l !== null; });
+      
+      // Batch remove labels
+      var batchSize = 100;
+      for (var i = 0; i < threads.length; i += batchSize) {
+        var batch = threads.slice(i, i + batchSize);
+        
+        // Remove category labels
+        for (var j = 0; j < labelsToRemove.length; j++) {
+          labelsToRemove[j].removeFromThreads(batch);
+        }
+        
+        // Finally remove the mark
+        backfillLabel.removeFromThreads(batch);
+        Logger.log('  Cleaned batch ' + (i + batch.length) + ' / ' + threads.length);
+      }
+    }
+  }
+  
+  // Clear status properties
+  props.deleteProperty('backfill_status');
+  props.deleteProperty('backfill_offset');
+  props.deleteProperty('backfill_total_processed');
+  props.deleteProperty('backfill_query');
+  
+  Logger.log('✅ COMPLETE RESET: All labels from the last run have been removed.');
 }
 
 // ============================================================
