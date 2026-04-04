@@ -599,3 +599,18 @@ function showApiKeyDialog() {
     .setTitle('API Key Setup');
   SpreadsheetApp.getUi().showModalDialog(html, 'API Key Setup');
 }
+
+/**
+ * Process the last 7 days of emails.
+ */
+function backfillLastWeek() {
+  var now = new Date();
+  var oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+  
+  // Format dates for Gmail Search
+  var startDate = Utilities.formatDate(oneWeekAgo, "GMT+5:30", "yyyy-MM-dd");
+  var endDate = Utilities.formatDate(now, "GMT+5:30", "yyyy-MM-dd");
+  
+  Logger.log('⏳ Starting backfill for the last 7 days (' + startDate + ' to ' + endDate + ')...');
+  startBackfill(startDate, endDate);
+}
