@@ -248,7 +248,7 @@ function backfillEmails() {
     var totalProcessed = parseInt(props.getProperty('backfill_total_processed') || '0', 10);
     
     // Fetch next batch of threads
-    var BATCH_SIZE = 80; // Smaller batch for backfill (to account for sleep time)
+    var BATCH_SIZE = 60; // Safer batch size for 5.1s sleep (to fit in 6-min script limit)
     var threads = GmailApp.search(query, offset, BATCH_SIZE);
     
     if (threads.length === 0) {
@@ -281,16 +281,19 @@ function backfillEmails() {
           var result = classifyEmail(email);
           
           if (result && result.label) {
+            // Log the classification source for monitoring
+            Logger.log('  → [' + result.source.toUpperCase() + '] ' + email.from + ': ' + result.label);
+            
             LabelManager.applyLabelToEmail(email, result.label);
             ConfigManager.updateSenderHistory(email.from, result.label);
             ConfigManager.incrementStats(result.source);
             batchProcessed++;
             totalProcessed++;
             
-            // 🚥 RATE LIMIT: 15 per minute (free tier) = 1 every 4 seconds.
-            // We sleep to stay safe and avoid the 429 error.
+            // 🚥 ULTRA-SAFE RATE LIMIT: 11 requests per minute 
+            // 60 / 5.1 = 11.7. This is well below the 15-per-minute limit.
             if (result.source === 'llm') {
-               Utilities.sleep(4100); 
+               Utilities.sleep(5100); 
             }
           }
         } catch (msgError) {
