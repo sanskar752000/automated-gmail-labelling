@@ -1020,7 +1020,7 @@ var RuleLearner = {
     for (var i = 0; i < learnedRules.length; i++) {
       if (learnedRules[i].id === ruleId) {
         // Rule already exists — update confidence
-        learnedRules[i].confidence = Math.min(0.95, consistency);
+        learnedRules[i].confidence = Math.min(0.95, confidence);
         this.saveLearnedRules(learnedRules);
         return;
       }
