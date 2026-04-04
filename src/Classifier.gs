@@ -451,7 +451,7 @@ var DEFAULT_RULES = [
 // ============================================================
 
 var RuleEngine = {
-  
+
   /**
    * Evaluate all rules against an email.
    * Rules are processed in priority order (highest first).
@@ -459,23 +459,23 @@ var RuleEngine = {
    * @param {Object} email - Parsed email object
    * @returns {Object|null} Best match: { label, confidence, ruleId, source }
    */
-  evaluate: function(email) {
+  evaluate: function (email) {
     var rules = ConfigManager.getRules();
-    
+
     // Sort by priority (highest first)
-    rules.sort(function(a, b) { return (b.priority || 0) - (a.priority || 0); });
-    
+    rules.sort(function (a, b) { return (b.priority || 0) - (a.priority || 0); });
+
     var bestMatch = null;
-    
+
     for (var i = 0; i < rules.length; i++) {
       var rule = rules[i];
       if (!rule.enabled) continue;
-      
+
       var matched = this.evaluateRule(rule, email);
-      
+
       if (matched) {
         var confidence = ConfidenceScorer.calculate(rule, email, matched);
-        
+
         // Short-circuit for very high confidence matches
         if (confidence >= 0.95) {
           return {
@@ -486,7 +486,7 @@ var RuleEngine = {
             reasoning: 'High confidence rule match: ' + rule.id
           };
         }
-        
+
         // Track best match
         if (!bestMatch || confidence > bestMatch.confidence) {
           bestMatch = {
@@ -499,17 +499,17 @@ var RuleEngine = {
         }
       }
     }
-    
+
     return bestMatch;
   },
-  
+
   /**
    * Evaluate a single rule against an email.
    * @param {Object} rule - Rule definition
    * @param {Object} email - Email object
    * @returns {boolean} Whether the rule matched
    */
-  evaluateRule: function(rule, email) {
+  evaluateRule: function (rule, email) {
     switch (rule.type) {
       case 'sender':
         return this.evaluateSenderRule(rule, email);
@@ -526,36 +526,36 @@ var RuleEngine = {
         return false;
     }
   },
-  
+
   /**
    * Evaluate a sender-based rule.
    */
-  evaluateSenderRule: function(rule, email) {
+  evaluateSenderRule: function (rule, email) {
     var senderEmail = (email.from || '').toLowerCase();
-    
+
     for (var i = 0; i < rule.patterns.length; i++) {
       var pattern = rule.patterns[i];
-      
+
       if (pattern.exact) {
         if (senderEmail === pattern.domain.toLowerCase()) return true;
       } else if (pattern.domain) {
         if (senderEmail.endsWith('@' + pattern.domain.toLowerCase()) ||
-            senderEmail.endsWith('.' + pattern.domain.toLowerCase())) {
+          senderEmail.endsWith('.' + pattern.domain.toLowerCase())) {
           return true;
         }
       }
     }
     return false;
   },
-  
+
   /**
    * Evaluate a keyword-based rule.
    */
-  evaluateKeywordRule: function(rule, email) {
+  evaluateKeywordRule: function (rule, email) {
     for (var p = 0; p < rule.patterns.length; p++) {
       var pattern = rule.patterns[p];
       var text = '';
-      
+
       if (pattern.location === 'subject') {
         text = (email.subject || '').toLowerCase();
       } else if (pattern.location === 'body') {
@@ -563,14 +563,14 @@ var RuleEngine = {
       } else {
         text = ((email.subject || '') + ' ' + (email.body || '')).toLowerCase();
       }
-      
+
       var matchCount = 0;
       for (var k = 0; k < pattern.keywords.length; k++) {
         if (text.indexOf(pattern.keywords[k].toLowerCase()) !== -1) {
           matchCount++;
         }
       }
-      
+
       if (pattern.match === 'all') {
         if (matchCount === pattern.keywords.length) return true;
       } else {
@@ -580,15 +580,15 @@ var RuleEngine = {
     }
     return false;
   },
-  
+
   /**
    * Evaluate a regex pattern-based rule.
    */
-  evaluatePatternRule: function(rule, email) {
+  evaluatePatternRule: function (rule, email) {
     for (var p = 0; p < rule.patterns.length; p++) {
       var pattern = rule.patterns[p];
       var text = '';
-      
+
       if (pattern.location === 'subject') {
         text = email.subject || '';
       } else if (pattern.location === 'body') {
@@ -596,7 +596,7 @@ var RuleEngine = {
       } else {
         text = (email.subject || '') + ' ' + (email.body || '');
       }
-      
+
       try {
         var regex = new RegExp(pattern.regex, pattern.flags || '');
         if (regex.test(text)) return true;
@@ -606,16 +606,16 @@ var RuleEngine = {
     }
     return false;
   },
-  
+
   /**
    * Evaluate a header-based rule.
    */
-  evaluateHeaderRule: function(rule, email) {
+  evaluateHeaderRule: function (rule, email) {
     var headers = email.headers || {};
-    
+
     for (var p = 0; p < rule.patterns.length; p++) {
       var pattern = rule.patterns[p];
-      
+
       if (pattern.exists) {
         // Check if header exists
         if (headers[pattern.header] !== undefined && headers[pattern.header] !== null) {
@@ -631,13 +631,13 @@ var RuleEngine = {
     }
     return false;
   },
-  
+
   /**
    * Evaluate a composite rule (AND/OR of sub-rules).
    */
-  evaluateCompositeRule: function(rule, email) {
+  evaluateCompositeRule: function (rule, email) {
     if (!rule.rules || rule.rules.length === 0) return false;
-    
+
     if (rule.operator === 'AND') {
       for (var i = 0; i < rule.rules.length; i++) {
         if (!this.evaluateRule(rule.rules[i], email)) return false;
@@ -658,7 +658,7 @@ var RuleEngine = {
 // ============================================================
 
 var ConfidenceScorer = {
-  
+
   WEIGHTS: {
     ruleMatch: 0.25,
     ruleSpecificity: 0.25,
@@ -666,7 +666,7 @@ var ConfidenceScorer = {
     historicalAccuracy: 0.15,
     senderReputation: 0.15
   },
-  
+
   /**
    * Calculate confidence score for a rule match.
    * @param {Object} rule - The matched rule
@@ -674,29 +674,29 @@ var ConfidenceScorer = {
    * @param {boolean} matched - Whether the rule matched
    * @returns {number} Confidence score between 0 and 1
    */
-  calculate: function(rule, email, matched) {
+  calculate: function (rule, email, matched) {
     if (!matched) return 0;
-    
+
     var ruleMatchScore = rule.confidence || 0.5;
     var specificityScore = this.getRuleSpecificity(rule.type);
     var clarityScore = this.getEmailClarity(email);
     var historicalScore = this.getHistoricalAccuracy(rule.id);
     var reputationScore = this.getSenderReputation(email.from);
-    
-    var finalScore = 
+
+    var finalScore =
       this.WEIGHTS.ruleMatch * ruleMatchScore +
       this.WEIGHTS.ruleSpecificity * specificityScore +
       this.WEIGHTS.emailClarity * clarityScore +
       this.WEIGHTS.historicalAccuracy * historicalScore +
       this.WEIGHTS.senderReputation * reputationScore;
-    
+
     return Math.min(1, Math.max(0, finalScore));
   },
-  
+
   /**
    * Score rule type specificity (more specific = higher score).
    */
-  getRuleSpecificity: function(ruleType) {
+  getRuleSpecificity: function (ruleType) {
     var scores = {
       'composite': 0.95,
       'header': 0.90,
@@ -706,11 +706,11 @@ var ConfidenceScorer = {
     };
     return scores[ruleType] || 0.50;
   },
-  
+
   /**
    * Assess email clarity (well-formed = higher score).
    */
-  getEmailClarity: function(email) {
+  getEmailClarity: function (email) {
     var clarity = 0.5;
     if (email.subject && email.subject.length > 5) clarity += 0.15;
     if (email.body && email.body.length > 50) clarity += 0.15;
@@ -718,20 +718,20 @@ var ConfidenceScorer = {
     if (!this.hasUnusualCharacters(email)) clarity += 0.10;
     return Math.min(1, Math.max(0, clarity));
   },
-  
+
   /**
    * Check for excessive non-ASCII characters.
    */
-  hasUnusualCharacters: function(email) {
+  hasUnusualCharacters: function (email) {
     var text = (email.subject || '') + (email.body || '').substring(0, 500);
     var unusualCount = (text.match(/[^\x00-\x7F]/g) || []).length;
     return unusualCount > text.length * 0.3;
   },
-  
+
   /**
    * Get historical accuracy for a rule.
    */
-  getHistoricalAccuracy: function(ruleId) {
+  getHistoricalAccuracy: function (ruleId) {
     // Guard: AnalyticsManager is optional
     if (typeof AnalyticsManager !== 'undefined' && AnalyticsManager.SPREADSHEET_ID) {
       try {
@@ -745,11 +745,11 @@ var ConfidenceScorer = {
     }
     return 0.8; // Default when analytics is unavailable
   },
-  
+
   /**
    * Get sender reputation from history.
    */
-  getSenderReputation: function(senderEmail) {
+  getSenderReputation: function (senderEmail) {
     var senderHistory = ConfigManager.getSenderHistory(senderEmail);
     if (senderHistory && senderHistory.total > 0) {
       return senderHistory.accuracy;
@@ -763,14 +763,14 @@ var ConfidenceScorer = {
 // ============================================================
 
 var ThresholdManager = {
-  
+
   /**
    * Determine if a confidence score meets the threshold for a given action.
    * @param {number} confidence - The confidence score
    * @param {string} action - 'accept' or 'escalate'
    * @returns {boolean}
    */
-  meetsThreshold: function(confidence, action) {
+  meetsThreshold: function (confidence, action) {
     if (action === 'accept') {
       return confidence >= ConfigManager.getConfidenceThreshold();
     }
@@ -786,7 +786,7 @@ var ThresholdManager = {
 // ============================================================
 
 var ClassificationRouter = {
-  
+
   /**
    * Main classification entry point. Decides between rule-based and LLM classification.
    * 
@@ -800,32 +800,32 @@ var ClassificationRouter = {
    * @param {Object} email - Parsed email object
    * @returns {Object} { label, confidence, source, reasoning }
    */
-  classify: function(email) {
+  classify: function (email) {
     // Validate input
     var validation = InputValidator.validateEmail(email);
     if (!validation.valid) {
       Logger.log('Invalid email: ' + validation.error);
       return FallbackClassifier.classify(email);
     }
-    
+
     // Step 1: Try rule engine
     var ruleResult = RuleEngine.evaluate(email);
-    
+
     if (ruleResult && ThresholdManager.meetsThreshold(ruleResult.confidence, 'accept')) {
       // High confidence rule match — accept without LLM
       return ruleResult;
     }
-    
+
     // Step 2: Escalate to LLM
     try {
       LLMClient.initialize();
       var labels = ConfigManager.getLabels();
       var llmResult = LLMClient.classify(email, labels);
-      
+
       if (llmResult && llmResult.label) {
         // Learn from LLM classification to auto-generate rules
         RuleLearner.learn(email, llmResult);
-        
+
         // If we had a rule result, check consensus
         if (ruleResult && ruleResult.label === llmResult.label) {
           // Consensus — boost confidence
@@ -836,7 +836,7 @@ var ClassificationRouter = {
             reasoning: 'Rule and LLM agree on classification'
           };
         }
-        
+
         // LLM result takes precedence over low-confidence rule
         return {
           label: llmResult.label,
@@ -848,12 +848,12 @@ var ClassificationRouter = {
     } catch (llmError) {
       Logger.log('LLM classification failed: ' + llmError.message);
     }
-    
+
     // Step 3: Use rule result if we had one (even low confidence)
     if (ruleResult) {
       return ruleResult;
     }
-    
+
     // Step 4: Fallback classifier
     return FallbackClassifier.classify(email);
   }
@@ -864,7 +864,7 @@ var ClassificationRouter = {
 // ============================================================
 
 var FallbackClassifier = {
-  
+
   /**
    * Last-resort classification when both rules and LLM fail.
    * Uses sender history and simple heuristics.
@@ -872,7 +872,7 @@ var FallbackClassifier = {
    * @param {Object} email - Parsed email object
    * @returns {Object} Classification result
    */
-  classify: function(email) {
+  classify: function (email) {
     // Try sender history first
     var senderHistory = ConfigManager.getSenderHistory(email.from);
     if (senderHistory && senderHistory.total >= 3) {
@@ -885,7 +885,7 @@ var FallbackClassifier = {
           bestLabel = label;
         }
       }
-      
+
       if (bestLabel) {
         return {
           label: bestLabel,
@@ -895,12 +895,12 @@ var FallbackClassifier = {
         };
       }
     }
-    
+
     // Simple keyword fallback
     var subject = (email.subject || '').toLowerCase();
     var body = (email.body || '').toLowerCase().substring(0, 1000);
     var text = subject + ' ' + body;
-    
+
     var keywordMap = {
       'Jobs': ['job', 'hiring', 'engineer', 'developer', 'linkedin', 'naukri', 'vacancy', 'career'],
       'Finance/Banking': ['transaction', 'credit card', 'debit', 'bank', 'statement', 'bobcard', 'emi', 'indusind'],
@@ -915,10 +915,10 @@ var FallbackClassifier = {
       'Newsletters': ['unsubscribe', 'newsletter', 'digest'],
       'Marketing': ['sale', 'discount', 'offer', 'deal', 'cashback']
     };
-    
+
     var bestLabel = 'Uncategorized';
     var bestScore = 0;
-    
+
     for (var label in keywordMap) {
       var keywords = keywordMap[label];
       var score = 0;
@@ -930,7 +930,7 @@ var FallbackClassifier = {
         bestLabel = label;
       }
     }
-    
+
     return {
       label: bestLabel,
       confidence: bestScore > 0 ? 0.4 : 0.1,
@@ -945,18 +945,18 @@ var FallbackClassifier = {
 // ============================================================
 
 var RuleLearner = {
-  
+
   /**
    * Minimum number of LLM classifications for the same sender→label
    * before a rule is auto-generated.
    */
   LEARN_THRESHOLD: 3,
-  
+
   /**
    * Minimum LLM confidence to count toward learning.
    */
   MIN_CONFIDENCE: 0.70,
-  
+
   /**
    * Called after every LLM classification.
    * Tracks sender→label patterns and auto-generates rules.
@@ -964,47 +964,59 @@ var RuleLearner = {
    * @param {Object} email - Parsed email object
    * @param {Object} result - LLM classification result { label, confidence }
    */
-  learn: function(email, result) {
+  learn: function (email, result) {
     if (!result || !result.label || result.confidence < this.MIN_CONFIDENCE) {
       return;
     }
-    
+
     // Extract domain from sender
     var domain = this.extractDomain(email.from);
     if (!domain) return;
-    
+
     // Track this classification in learning history
     var history = this.getLearningHistory();
     var key = domain;
-    
+
     if (!history[key]) {
       history[key] = { labels: {}, total: 0 };
     }
-    
+
+    if (!history[key].labels[result.label]) {
+      history[key].labels[result.label] = { count: 0, confidenceSum: 0 };
+    }
+
     history[key].total++;
-    history[key].labels[result.label] = (history[key].labels[result.label] || 0) + 1;
-    
+    history[key].labels[result.label].count++;
+    history[key].labels[result.label].confidenceSum += result.confidence;
+
     this.saveLearningHistory(history);
-    
+
     // Check if we should generate a rule
-    var labelCount = history[key].labels[result.label];
-    if (labelCount >= this.LEARN_THRESHOLD) {
+    var labelStats = history[key].labels[result.label];
+    if (labelStats.count >= this.LEARN_THRESHOLD) {
       // Check consistency — is this label dominant for this domain?
-      var consistency = labelCount / history[key].total;
-      if (consistency >= 0.7) {
-        this.generateRule(domain, result.label, consistency);
+      var consistency = labelStats.count / history[key].total;
+
+      // Calculate average LLM confidence
+      var avgConfidence = labelStats.confidenceSum / labelStats.count;
+
+      // Rule confidence is consistency weighted by LLM accuracy
+      var finalConfidence = consistency * avgConfidence;
+
+      if (consistency >= 0.8) {
+        this.generateRule(domain, result.label, finalConfidence);
       }
     }
   },
-  
+
   /**
    * Auto-generate a sender rule and store it.
    */
-  generateRule: function(domain, label, consistency) {
+  generateRule: function (domain, label, confidence) {
     // Check if a rule already exists for this domain
     var learnedRules = this.getLearnedRules();
     var ruleId = 'learned-' + domain.replace(/[^a-z0-9]/g, '-');
-    
+
     for (var i = 0; i < learnedRules.length; i++) {
       if (learnedRules[i].id === ruleId) {
         // Rule already exists — update confidence
@@ -1013,41 +1025,47 @@ var RuleLearner = {
         return;
       }
     }
-    
+
     // Create new rule
     var newRule = {
       id: ruleId,
       type: 'sender',
       patterns: [{ domain: domain }],
       label: label,
-      confidence: Math.min(0.90, consistency),
+      confidence: Math.min(0.95, confidence),
       priority: 105,
       enabled: true,
       learned: true,
       learnedAt: new Date().toISOString()
     };
-    
+
     learnedRules.push(newRule);
     this.saveLearnedRules(learnedRules);
-    
+
     Logger.log('🧠 Auto-learned rule: ' + domain + ' → ' + label +
-      ' (confidence: ' + consistency.toFixed(2) + ')');
+      ' (confidence: ' + confidence.toFixed(2) + ')');
   },
-  
-  /**
-   * Extract domain from email address.
-   */
-  extractDomain: function(email) {
+
+  pruneHistory: function (history) {
+    var pruned = {};
+    for (var key in history) {
+      if (history[key].total >= 2) {
+        pruned[key] = history[key];
+      }
+    }
+    return pruned;
+  },
+  extractDomain: function (email) {
     if (!email) return null;
     var match = email.match(/@(.+)$/);
     return match ? match[1].toLowerCase() : null;
   },
-  
+
   // ============================================================
   // STORAGE
   // ============================================================
-  
-  getLearningHistory: function() {
+
+  getLearningHistory: function () {
     var props = PropertiesService.getScriptProperties();
     var data = props.getProperty('learning_history');
     if (!data) return {};
@@ -1057,8 +1075,8 @@ var RuleLearner = {
       return {};
     }
   },
-  
-  saveLearningHistory: function(history) {
+
+  saveLearningHistory: function (history) {
     var json = JSON.stringify(history);
     // Prune if approaching size limit (9KB)
     if (json.length > 8000) {
@@ -1067,8 +1085,8 @@ var RuleLearner = {
     }
     PropertiesService.getScriptProperties().setProperty('learning_history', json);
   },
-  
-  getLearnedRules: function() {
+
+  getLearnedRules: function () {
     var props = PropertiesService.getScriptProperties();
     var data = props.getProperty('learned_rules');
     if (!data) return [];
@@ -1078,8 +1096,8 @@ var RuleLearner = {
       return [];
     }
   },
-  
-  saveLearnedRules: function(rules) {
+
+  saveLearnedRules: function (rules) {
     var json = JSON.stringify(rules);
     if (json.length > 8000) {
       // Keep only the most recent 50 rules
@@ -1088,11 +1106,11 @@ var RuleLearner = {
     }
     PropertiesService.getScriptProperties().setProperty('learned_rules', json);
   },
-  
+
   /**
    * Prune learning history — keep only domains with 2+ classifications.
    */
-  pruneHistory: function(history) {
+  pruneHistory: function (history) {
     var pruned = {};
     for (var key in history) {
       if (history[key].total >= 2) {
@@ -1101,11 +1119,11 @@ var RuleLearner = {
     }
     return pruned;
   },
-  
+
   /**
    * View all auto-learned rules. Run from editor.
    */
-  showLearnedRules: function() {
+  showLearnedRules: function () {
     var rules = this.getLearnedRules();
     if (rules.length === 0) {
       Logger.log('No auto-learned rules yet. Process more emails!');
@@ -1118,15 +1136,15 @@ var RuleLearner = {
       Logger.log('  ' + (i + 1) + '. ' + r.patterns[0].domain + ' -> ' + r.label +
         ' (confidence: ' + r.confidence.toFixed(2) + ')' + status);
     }
-    
-    var candidates = rules.filter(function(r) { return r.confidence >= 0.85; });
+
+    var candidates = rules.filter(function (r) { return r.confidence >= 0.85; });
     if (candidates.length > 0) {
       Logger.log(candidates.length + ' rules ready for graduation. Run graduateLearnedRules() to promote them.');
     }
-    
+
     return rules;
   },
-  
+
   /**
    * Graduate high-confidence learned rules into permanent stored rules.
    * Graduated rules are:
@@ -1137,13 +1155,13 @@ var RuleLearner = {
    * @param {number} [minConfidence=0.85] - Minimum confidence to graduate
    * @returns {Array} List of graduated rules
    */
-  graduateRules: function(minConfidence) {
+  graduateRules: function (minConfidence) {
     minConfidence = minConfidence || 0.85;
-    
+
     var learnedRules = this.getLearnedRules();
     var toGraduate = [];
     var toKeep = [];
-    
+
     for (var i = 0; i < learnedRules.length; i++) {
       if (learnedRules[i].confidence >= minConfidence) {
         toGraduate.push(learnedRules[i]);
@@ -1151,13 +1169,13 @@ var RuleLearner = {
         toKeep.push(learnedRules[i]);
       }
     }
-    
+
     if (toGraduate.length === 0) {
       Logger.log('No learned rules meet the graduation threshold (' + minConfidence + ').');
       Logger.log('Current learned rules: ' + learnedRules.length);
       return [];
     }
-    
+
     // Get stored rules WITHOUT learned ones (to avoid duplicates)
     var props = PropertiesService.getScriptProperties();
     var rulesJson = props.getProperty('rules');
@@ -1167,21 +1185,21 @@ var RuleLearner = {
     } catch (e) {
       storedRules = DEFAULT_RULES.slice();
     }
-    
+
     for (var g = 0; g < toGraduate.length; g++) {
       var rule = toGraduate[g];
       rule.graduated = true;
       rule.graduatedAt = new Date().toISOString();
       delete rule.learned;
       rule.priority = Math.max(rule.priority, 110);
-      
+
       storedRules.push(rule);
       Logger.log('Graduated: ' + rule.patterns[0].domain + ' -> ' + rule.label);
     }
-    
+
     ConfigManager.setRules(storedRules);
     this.saveLearnedRules(toKeep);
-    
+
     // Clean up learning history for graduated domains
     var history = this.getLearningHistory();
     for (var h = 0; h < toGraduate.length; h++) {
@@ -1189,19 +1207,19 @@ var RuleLearner = {
       delete history[domain];
     }
     this.saveLearningHistory(history);
-    
+
     Logger.log('=== Graduation Summary ===');
     Logger.log('Graduated: ' + toGraduate.length + ' rules');
     Logger.log('Remaining learned: ' + toKeep.length + ' rules');
     Logger.log('Total stored rules: ' + storedRules.length);
-    
+
     return toGraduate;
   },
-  
+
   /**
    * Reset all learned data (rules + history).
    */
-  resetAll: function() {
+  resetAll: function () {
     PropertiesService.getScriptProperties().deleteProperty('learned_rules');
     PropertiesService.getScriptProperties().deleteProperty('learning_history');
     Logger.log('All learned rules and history cleared.');

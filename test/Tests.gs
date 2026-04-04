@@ -744,6 +744,7 @@ function testGraduation() {
         var graduated = RuleLearner.graduateRules(0.85);
         assertEqual(graduated.length, 0, 'Should not graduate low confidence rules');
         
+        // Learned rule should still be there
         var remaining = RuleLearner.getLearnedRules();
         assert(remaining.length > 0, 'Low confidence rule should remain in learned rules');
         
