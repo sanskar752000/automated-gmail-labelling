@@ -818,12 +818,18 @@ function testBackfillReset() {
         };
         
         try {
+          // Temporarily mock category labels for the test
+          var oldCategoryLabels = GmailService.DEFAULT_LABELS;
+          GmailService.DEFAULT_LABELS = ['Finance/Banking']; 
+
           resetBackfillState();
           
           // Verify
           assert(deletedProps.indexOf('backfill_status') !== -1, 'Should delete status property');
           assert(deletedProps.indexOf('backfill_offset') !== -1, 'Should delete offset property');
           assertEqual(removedFromThreadsCount, 4, 'Should remove 2 categories + 2 markers (mock test logic)');
+          
+          GmailService.DEFAULT_LABELS = oldCategoryLabels;
         } finally {
           // Restore mocks
           PropertiesService.getScriptProperties = oldProps;
