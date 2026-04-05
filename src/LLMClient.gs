@@ -10,7 +10,7 @@
 var LLMClient = {
   API_KEY: null,
   API_PROVIDER: 'gemini',
-  MODEL: 'gemini-2.0-flash',
+  MODEL: 'gemma-3-4b-it',
   MAX_TOKENS: 150,
   TIMEOUT_MS: 25000,
   
@@ -25,7 +25,7 @@ var LLMClient = {
     var props = PropertiesService.getScriptProperties();
     this.API_KEY = props.getProperty('LLM_API_KEY');
     this.API_PROVIDER = props.getProperty('LLM_PROVIDER') || 'gemini';
-    this.MODEL = props.getProperty('LLM_MODEL') || 'gemini-2.0-flash';
+    this.MODEL = props.getProperty('LLM_MODEL') || 'gemma-3-4b-it';
     
     if (!this.API_KEY) {
       throw new Error(
